@@ -72,7 +72,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="30dp"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="60dp"
         android:text="Сумма: "
         android:textColor="#A3A0A0"
         android:textSize="18sp"
@@ -126,11 +126,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
-        android:text="Не знаете курс доллара?"
+        android:text="Не знаете курс?"
         android:textColor="#4CAE50"
         android:textSize="18sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button" />
+        app:layout_constraintTop_toBottomOf="@+id/button"
+        android:onClick="onHowCourse"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

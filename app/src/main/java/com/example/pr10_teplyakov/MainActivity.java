@@ -10,25 +10,20 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.appcompat.app.AlertDialog;
 import android.content.DialogInterface;
+import android.os.NetworkOnMainThreadException;
 import android.widget.EditText;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Spinner;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.content.Intent;
-import android.net.Uri;
 import android.view.View;
 import com.google.gson.annotations.SerializedName;
-import java.util.List;
 import java.util.Map;
-import com.google.android.material.navigation.NavigationBarView;
 import com.google.gson.Gson;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,8 +43,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     Map<String, Info> info = new HashMap<String, Info>();
-    Spinner spinnerFrom = findViewById(R.id.spinner);
-    Spinner spinnerTo = findViewById(R.id.spinner2);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,21 +55,23 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+        Spinner spinnerFrom = findViewById(R.id.spinner);
+        Spinner spinnerTo = findViewById(R.id.spinner2);
+
         spinnerTo.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {Consider();}
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {}
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
         spinnerFrom.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {Consider();}
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {}
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
-        LoadInfoValue liv = new LoadInfoValue();
-        liv.execute();
+        LoadInfoValue();
     }
 
     public void AlertDialogs(String title, String message){
@@ -89,28 +84,36 @@ public class MainActivity extends AppCompatActivity {
         alert.show();
     }
 
-    public class LoadInfoValue extends AsyncTask<Void, Void, Void> {
-        @Override
-        protected Void doInBackground(Void... params) {
-            String body;
-            Document doc_b = null;
-            try {
-                doc_b = Jsoup.connect("https://www.cbr-xml-daily.ru/daily_json.js").get();
-            } catch (IOException e) {
-                AlertDialogs("Уведомление", "Ошибка в подключении.");
-            }
-            if (doc_b != null) {
-                Value value = new Gson().fromJson(doc_b.text(), Value.class);
-                for (Info item : value.Valute.values()) {
-                    info.put(item.Name, item);
+    public void LoadInfoValue() {
+        new AsyncTask<Void, Void, Value>() {
+            @Override
+            protected Value doInBackground(Void... voids) {
+                try {
+                    Document doc_b = (Document) Jsoup.connect("https://www.cbr-xml-daily.ru/daily_json.js").ignoreContentType(true).get();
+                    return new Gson().fromJson(doc_b.text(), Value.class);
+                } catch (IOException e) {
+                    runOnUiThread(() -> AlertDialogs("Уведомление", "Ошибка."));
                 }
-            } else body = "Ошибка!";
-            LoadItem();
-            return null;
-        }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Value value) {
+                if (value != null && value.Valute != null) {
+                    for (Info item : value.Valute.values()) {
+                        info.put(item.Name, item);
+                    }
+                    LoadItem();
+                } else {
+                    AlertDialogs("Уведомление", "Ошибка!");
+                }
+            }
+        }.execute();
     }
 
     public void LoadItem(){
+        Spinner spinnerFrom = findViewById(R.id.spinner);
+        Spinner spinnerTo = findViewById(R.id.spinner2);
         ArrayAdapter<String> adapter1 = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item);
         for (String item : info.keySet()) {
             adapter1.add(item);
@@ -125,11 +128,13 @@ public class MainActivity extends AppCompatActivity {
         spinnerFrom.setAdapter(adapter2);
     }
 
-    public void Consider(){
+    public void Consider(View view){
+        Spinner spinnerFrom = findViewById(R.id.spinner);
+        Spinner spinnerTo = findViewById(R.id.spinner2);
         Info infoTo =  info.get(spinnerTo.getSelectedItem());
         Info infoFrom =  info.get(spinnerFrom.getSelectedItem());
         EditText count = findViewById(R.id.editText2);
-        TextView tv = findViewById(R.id.textView3);
+        TextView tv = findViewById(R.id.textView4);
 
         if(infoTo != null){
             if(infoFrom != null){
@@ -140,15 +145,21 @@ public class MainActivity extends AppCompatActivity {
                     float composition = 0;
 
                     composition = f_infoTo / f_infoFrom * f_count;
-                    tv.setText(composition + " " + infoTo.CharCode);
-                }
-                else AlertDialogs("Уведомление", "Введите кол-во денежных единиц.");
+                    tv.setText(Float.parseFloat(String.format("%.2f", composition)) + " " + infoFrom.CharCode);
+                } else AlertDialogs("Уведомление", "Введите кол-во денежных единиц.");
             } else AlertDialogs("Уведомление", "Выберите валюту, из которой сделать перевод.");
         } else AlertDialogs("Уведомление", "Выберите валюту, в которую сделать перевод.");
     }
 
-    public void URL(View view) {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.sberbank.ru/ru/quotes/currencies"));
-        startActivity(intent);
+    public void onHowCourse(View view){
+        Spinner spinnerFrom = findViewById(R.id.spinner);
+        Spinner spinnerTo = findViewById(R.id.spinner2);
+        Info infoTo =  info.get(spinnerTo.getSelectedItem());
+        Info infoFrom =  info.get(spinnerFrom.getSelectedItem());
+        if(infoTo != null){
+            if(infoFrom != null) {
+                AlertDialogs("Курс валют", infoFrom.Name + " курс: " + infoFrom.Value + " р.\n" + infoTo.Name + " курс: " + infoTo.Value + " р.");
+            } else AlertDialogs("Уведомление", "Выберите валюту, из которой сделать перевод.");
+        } else AlertDialogs("Уведомление", "Выберите валюту, в которую сделать перевод.");
     }
 }
